@@ -1,0 +1,17 @@
+const quotes = [
+  { text: "La vita è per il 10% cosa ti accade e per il 90% come reagisci.", category: "Ispirazione" },
+  { text: "Il tuo tempo è limitato, non sprecarlo vivendo la vita di qualcun altro.", category: "Motivazione" },
+  { text: "Il modo per iniziare è smettere di parlare e iniziare a fare.", category: "Business" }
+];
+
+function showRandomQuote() {
+  const randomIndex = Math.floor(Math.random() * quotes.length);
+  const randomQuote = quotes[randomIndex];
+  const quoteDisplayElement = document.getElementById("quoteDisplay");
+  quoteDisplayElement.innerText = randomQuote.text;
+}
+
+// Event Listeners
+const newQuoteButton = document.getElementById("newQuote");
+newQuoteButton.addEventListener('click', showRandomQuote); // Per il click del pulsante
+document.addEventListener('DOMContentLoaded', showRandomQuote); // Per il caricamento della pagina
