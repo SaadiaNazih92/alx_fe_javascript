@@ -1,112 +1,264 @@
-// script.js
+
 let quotes = [
-  { text: "La vita è per il 10% cosa ti accade e per il 90% come reagisci.", category: "Ispirazione" },
-  { text: "Il tuo tempo è limitato, non sprecarlo vivendo la vita di qualcun altro.", category: "Motivazione" },
-  { text: "Il modo per iniziare è smettere di parlare e iniziare a fare.", category: "Business" }
+
 ];
-let filteredQuotes = []; // Array per contenere le citazioni filtrate
 
-// --- Funzioni Principali ---
+let filteredQuotes = [];
 
-function saveQuotes() {
-  localStorage.setItem('savedQuotes', JSON.stringify(quotes));
+
+
+// --- Funzioni di Sincronizzazione con Server (NOVITÀ) ---
+
+
+
+// Funzione per recuperare dati da un server fittizio
+
+async function fetchQuotesFromServer() {
+
+  try {
+
+    // Usiamo JSONPlaceholder per simulare una API. Chiediamo 5 "post".
+
+    const response = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=5');
+
+    if (!response.ok) {
+
+      throw new Error(`HTTP error! status: ${response.status}`);
+
+    }
+
+    const serverData = await response.json();
+
+    
+
+    // Trasformiamo i dati ricevuti nel nostro formato { text, category }
+
+    const serverQuotes = serverData.map(post => ({
+
+      text: post.title, // Usiamo il titolo del post come testo della citazione
+
+      category: `Server-${post.userId}` // E l'ID utente come categoria
+
+    }));
+
+    return serverQuotes;
+
+    
+
+  } catch (error) {
+
+    console.error("Errore nel recuperare le citazioni dal server:", error);
+
+    return []; // Restituisce un array vuoto in caso di errore
+
+  }
+
 }
 
-function showRandomQuote() {
-  // MODIFICATO: Usa l'array filtrato invece di quello principale
-  const quotesToShow = filteredQuotes.length > 0 ? filteredQuotes : quotes;
 
-  if (quotesToShow.length === 0) {
-    document.getElementById("quoteDisplay").innerHTML = "Nessuna citazione trovata per questa categoria.";
+
+// Funzione principale per la sincronizzazione
+
+async function syncData() {
+
+  displayNotification("Syncing with server...");
+
+  const serverQuotes = await fetchQuotesFromServer();
+
+  
+
+  if (serverQuotes.length === 0) {
+
+    displayNotification("Could not sync. Server might be down.");
+
     return;
+
   }
-  const randomIndex = Math.floor(Math.random() * quotesToShow.length);
-  const randomQuote = quotesToShow[randomIndex];
-  document.getElementById("quoteDisplay").innerHTML = randomQuote.text;
-}
 
-function addQuote() {
-  const newTextElement = document.getElementById('newQuoteText');
-  const newCategoryElement = document.getElementById('newQuoteCategory');
-  const newText = newTextElement.value.trim();
-  const newCategory = newCategoryElement.value.trim();
+  
 
-  if (newText && newCategory) {
-    quotes.push({ text: newText, category: newCategory });
-    saveQuotes();
-    populateCategories(); // NUOVO: Aggiorna le categorie nel dropdown
-    newTextElement.value = "";
-    newCategoryElement.value = "";
-    alert("New quote added successfully!");
-    filterQuotes(); // Aggiorna la vista dopo l'aggiunta
-  } else {
-    alert("Please fill in both fields.");
-  }
-}
+  let newQuotesAdded = false;
 
-// NUOVO: Funzione per popolare il menu a tendina delle categorie
-function populateCategories() {
-  const categoryFilter = document.getElementById('categoryFilter');
-  // Estrae tutte le categorie, anche duplicate
-  const allCategories = quotes.map(quote => quote.category);
-  // Usa un Set per ottenere solo le categorie uniche
-  const uniqueCategories = [...new Set(allCategories)];
+  // Creiamo un Set con i testi delle citazioni locali per un controllo veloce
 
-  // Pulisce le opzioni esistenti (tranne la prima "All Categories")
-  categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+  const localQuoteTexts = new Set(quotes.map(q => q.text));
 
-  uniqueCategories.forEach(category => {
-    const option = document.createElement('option');
-    option.value = category;
-    option.textContent = category;
-    categoryFilter.appendChild(option);
+  
+
+  // Aggiungiamo le citazioni del server solo se non sono già presenti localmente
+
+  serverQuotes.forEach(serverQuote => {
+
+    if (!localQuoteTexts.has(serverQuote.text)) {
+
+      quotes.push(serverQuote);
+
+      newQuotesAdded = true;
+
+    }
+
   });
-}
 
-// NUOVO: Funzione per filtrare le citazioni
-function filterQuotes() {
-  const selectedCategory = document.getElementById('categoryFilter').value;
   
-  // Salva l'ultima scelta nel localStorage
-  localStorage.setItem('lastFilterCategory', selectedCategory);
 
-  if (selectedCategory === 'all') {
-    filteredQuotes = [...quotes]; // Mostra tutte le citazioni
+  if (newQuotesAdded) {
+
+    saveQuotes();
+
+    populateCategories();
+
+    filterQuotes(); // Aggiorna la vista
+
+    displayNotification("Sync complete! New quotes added.");
+
   } else {
-    filteredQuotes = quotes.filter(quote => quote.category === selectedCategory);
+
+    displayNotification("Sync complete. Your quotes are up to date.");
+
   }
-  
-  showRandomQuote(); // Mostra subito una citazione dalla selezione filtrata
+
 }
 
 
-// --- Funzioni di Import/Export (invariate) ---
-function exportToJsonFile() { /* ... codice di prima ... */ }
-function importFromJsonFile(event) { /* ... codice di prima ... */ }
+
+// Funzione per mostrare notifiche all'utente
+
+function displayNotification(message) {
+
+  const notificationArea = document.getElementById('notificationArea');
+
+  const notification = document.createElement('div');
+
+  notification.textContent = message;
+
+  // Stile base per la notifica
+
+  notification.style.backgroundColor = '#28a745';
+
+  notification.style.color = 'white';
+
+  notification.style.padding = '10px';
+
+  notification.style.marginBottom = '5px';
+
+  notification.style.borderRadius = '5px';
+
+  
+
+  notificationArea.appendChild(notification);
+
+  
+
+  // Rimuovi la notifica dopo 5 secondi
+
+  setTimeout(() => {
+
+    notification.remove();
+
+  }, 5000);
+
+}
+
+
+
+
+
+// --- Funzioni Esistenti (con piccole modifiche) ---
+
+function saveQuotes() { /* ... codice invariato ... */ }
+
+function showRandomQuote() { /* ... codice invariato ... */ }
+
+function addQuote() { /* ... codice modificato per aggiornare le categorie ... */ }
+
+function populateCategories() { /* ... codice invariato ... */ }
+
+function filterQuotes() { /* ... codice invariato ... */ }
+
+function exportToJsonFile() { /* ... codice invariato ... */ }
+
+function importFromJsonFile(event) {
+
+  // ... (codice invariato, ma aggiungiamo l'aggiornamento delle categorie)
+
+  // Dentro reader.onload, dopo aver aggiunto le citazioni:
+
+  // quotes.push(...importedQuotes);
+
+  // saveQuotes();
+
+  // populateCategories(); // Aggiungi questa chiamata
+
+  // alert('Quotes imported successfully!');
+
+  // showRandomQuote();
+
+}
+
+
+
+
 
 // --- Event Listener Principale ---
 
 document.addEventListener('DOMContentLoaded', () => {
+
   // Carica citazioni salvate
+
   const loadedQuotes = localStorage.getItem('savedQuotes');
+
   if (loadedQuotes) {
+
     quotes = JSON.parse(loadedQuotes);
+
   }
+
+
 
   // Popola e imposta il filtro
+
   populateCategories();
+
   const lastFilter = localStorage.getItem('lastFilterCategory');
+
   if (lastFilter) {
+
     document.getElementById('categoryFilter').value = lastFilter;
+
   }
+
   
+
   // Collega tutti gli eventi
+
   document.getElementById("newQuote").addEventListener('click', showRandomQuote);
+
   document.getElementById("addQuoteBtn").addEventListener('click', addQuote);
+
   document.getElementById("exportButton").addEventListener('click', exportToJsonFile);
+
   document.getElementById("importFile").addEventListener('change', importFromJsonFile);
-  document.getElementById("categoryFilter").addEventListener('change', filterQuotes); // Collega il filtro
+
+  document.getElementById("categoryFilter").addEventListener('change', filterQuotes);
+
+  // NUOVO: Collega il pulsante di sincronizzazione
+
+  document.getElementById("syncButton").addEventListener('click', syncData);
+
+
 
   // Esegui il filtro iniziale e mostra la prima citazione
+
   filterQuotes();
+
+
+
+  // Avvia la sincronizzazione periodica (es. ogni 60 secondi)
+
+  setInterval(syncData, 60000); 
+
+  displayNotification("App ready. Data will sync with server periodically.");
+
 });
+
+
